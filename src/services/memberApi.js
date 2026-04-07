@@ -15,6 +15,15 @@ function normalizeMember(member) {
   };
 }
 
+function isLocalRuntime() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
 async function fallbackLoadMembers() {
   const storedMembers = (await appStorage.get(MEMBER_STORAGE_KEY)) ?? [];
   return storedMembers.map(normalizeMember);
@@ -26,18 +35,30 @@ async function fallbackSaveMembers(members) {
 
 async function requestJson(url, options) {
   const response = await fetch(url, options);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const message = data.detail || data.error || `Request failed: ${response.status}`;
+    throw new Error(message);
   }
 
-  return response.json();
+  return data;
+}
+
+function shouldUseFallback() {
+  return isLocalRuntime();
 }
 
 export async function listMembers() {
   try {
     const data = await requestJson("/api/members");
     return data.members.map(normalizeMember);
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     return fallbackLoadMembers();
   }
 }
@@ -50,7 +71,11 @@ export async function createMembers(names) {
       body: JSON.stringify({ names }),
     });
     return data.members.map(normalizeMember);
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const existingMembers = await fallbackLoadMembers();
     const uniqueNames = names
       .map((name) => `${name}`.trim())
@@ -70,7 +95,11 @@ export async function deleteMember(name) {
       method: "DELETE",
     });
     return data.members.map(normalizeMember);
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const members = await fallbackLoadMembers();
     const nextMembers = members.filter((member) => member.name !== name);
     await fallbackSaveMembers(nextMembers);
@@ -86,7 +115,11 @@ export async function setupMemberPin(name, pinHash) {
       body: JSON.stringify({ action: "setup", name, pinHash }),
     });
     return listMembers();
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const members = await fallbackLoadMembers();
     const nextMembers = members.map((member) => (
       member.name === name ? { ...member, hasPin: true, pinHash } : member
@@ -104,7 +137,11 @@ export async function verifyMemberPin(name, pinHash) {
       body: JSON.stringify({ action: "verify", name, pinHash }),
     });
     return Boolean(data.ok);
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const members = await fallbackLoadMembers();
     return members.some((member) => member.name === name && member.pinHash === pinHash);
   }
@@ -118,7 +155,11 @@ export async function clearMemberPin(name) {
       body: JSON.stringify({ action: "clear", name }),
     });
     return listMembers();
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const members = await fallbackLoadMembers();
     const nextMembers = members.map((member) => (
       member.name === name ? { ...member, hasPin: false, pinHash: null } : member
@@ -136,7 +177,11 @@ export async function updateMemberProfile(name, profile) {
       body: JSON.stringify({ name, profile }),
     });
     return data.members.map(normalizeMember);
-  } catch {
+  } catch (error) {
+    if (!shouldUseFallback()) {
+      throw error;
+    }
+
     const members = await fallbackLoadMembers();
     const nextMembers = members.map((member) => (
       member.name === name ? { ...member, profile } : member

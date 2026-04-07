@@ -15,10 +15,12 @@ export default function AppLayout() {
     events,
     myName,
     memberAuthRequest,
+    memberApiError,
     passGate,
     logout,
     requestMemberAuth,
     closeMemberAuth,
+    dismissMemberApiError,
     setupMemberPin,
     verifyMemberPin,
   } = useCrew();
@@ -50,6 +52,14 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <div className="app-frame">
+        {memberApiError ? (
+          <div className="app-alert" role="alert">
+            <span>멤버 서버 오류: {memberApiError}</span>
+            <button type="button" className="app-alert__close" onClick={dismissMemberApiError}>
+              닫기
+            </button>
+          </div>
+        ) : null}
         <AppHeader
           membersCount={members.length}
           eventsCount={events.length}

@@ -72,6 +72,14 @@ function normalizeMembers(rawMembers) {
   return Array.isArray(rawMembers) ? rawMembers.map(normalizeMember) : [];
 }
 
+function toErrorMessage(error) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "멤버 서버 저장소에 연결하지 못했습니다.";
+}
+
 export function CrewProvider({ children }) {
   const [authed, setAuthed] = useState(false);
   const [role, setRole] = useState(USER_ROLE);
@@ -82,6 +90,7 @@ export function CrewProvider({ children }) {
   const [memberAuthRequest, setMemberAuthRequest] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
+  const [memberApiError, setMemberApiError] = useState("");
 
   const saveEvents = useCallback(async (nextEvents) => {
     setEvents(nextEvents);
@@ -91,17 +100,26 @@ export function CrewProvider({ children }) {
   const load = useCallback(async () => {
     setLoading(true);
 
-    const [storedMembers, storedEvents] = await Promise.all([
-      listMembers(),
-      appStorage.get(STORAGE_KEYS.events),
-    ]);
+    try {
+      const [storedMembers, storedEvents] = await Promise.all([
+        listMembers(),
+        appStorage.get(STORAGE_KEYS.events),
+      ]);
 
-    if (storedMembers) {
       setMembers(normalizeMembers(storedMembers));
-    }
+      setMemberApiError("");
 
-    if (storedEvents) {
-      setEvents(storedEvents);
+      if (storedEvents) {
+        setEvents(storedEvents);
+      }
+    } catch (error) {
+      setMembers([]);
+      setMemberApiError(toErrorMessage(error));
+
+      const storedEvents = await appStorage.get(STORAGE_KEYS.events);
+      if (storedEvents) {
+        setEvents(storedEvents);
+      }
     }
 
     const sessionStorage = getSessionStorage();
@@ -159,10 +177,15 @@ export function CrewProvider({ children }) {
     setMemberAuthRequest(null);
   }, []);
 
+  const dismissMemberApiError = useCallback(() => {
+    setMemberApiError("");
+  }, []);
+
   const setupMemberPin = useCallback(async (name, pin) => {
     const pinHash = await hashPin(name, pin);
     const nextMembers = await setupMemberPinRemote(name, pinHash);
     setMembers(normalizeMembers(nextMembers));
+    setMemberApiError("");
     finalizeMyName(name);
     setMemberAuthRequest(null);
   }, [finalizeMyName]);
@@ -174,6 +197,7 @@ export function CrewProvider({ children }) {
       return false;
     }
 
+    setMemberApiError("");
     finalizeMyName(name);
     setMemberAuthRequest(null);
     return true;
@@ -196,12 +220,14 @@ export function CrewProvider({ children }) {
 
     const nextMembers = await createMembers(names);
     setMembers(normalizeMembers(nextMembers));
+    setMemberApiError("");
     return true;
   }, [members]);
 
   const removeMember = useCallback(async (memberName) => {
     const nextMembers = await deleteMember(memberName);
     setMembers(normalizeMembers(nextMembers));
+    setMemberApiError("");
     if (myName === memberName) {
       clearMyName();
     }
@@ -210,6 +236,7 @@ export function CrewProvider({ children }) {
   const clearMemberPin = useCallback(async (memberName) => {
     const nextMembers = await clearMemberPinRemote(memberName);
     setMembers(normalizeMembers(nextMembers));
+    setMemberApiError("");
     if (myName === memberName) {
       clearMyName();
     }
@@ -218,6 +245,7 @@ export function CrewProvider({ children }) {
   const updateMemberProfile = useCallback(async (memberName, profile) => {
     const nextMembers = await updateMemberProfileRemote(memberName, profile);
     setMembers(normalizeMembers(nextMembers));
+    setMemberApiError("");
   }, []);
 
   const createEvent = useCallback(async (form) => {
@@ -330,10 +358,12 @@ export function CrewProvider({ children }) {
     memberAuthRequest,
     photoUploading,
     photoVersion,
+    memberApiError,
     passGate,
     logout,
     requestMemberAuth,
     closeMemberAuth,
+    dismissMemberApiError,
     setupMemberPin,
     verifyMemberPin,
     clearMyName,
@@ -357,10 +387,12 @@ export function CrewProvider({ children }) {
     memberAuthRequest,
     photoUploading,
     photoVersion,
+    memberApiError,
     passGate,
     logout,
     requestMemberAuth,
     closeMemberAuth,
+    dismissMemberApiError,
     setupMemberPin,
     verifyMemberPin,
     clearMyName,
