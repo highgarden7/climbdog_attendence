@@ -34,7 +34,7 @@ export async function loadMembers() {
 export async function saveMembers(members) {
   const { blobs } = await list({ prefix: MEMBERS_PREFIX });
   const blob = await put(buildPathname(), JSON.stringify(members), {
-    access: "private",
+    access: "public",
     addRandomSuffix: false,
     contentType: "application/json",
   });
