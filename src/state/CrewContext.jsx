@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "../config/constants";
 import { clearMemberPin as clearMemberPinRemote, createMembers, deleteMember, listMembers, setupMemberPin as setupMemberPinRemote, verifyMemberPin as verifyMemberPinRemote } from "../services/memberApi";
+import { deleteEventPhotos, listEventPhotos, uploadEventPhoto } from "../services/photoStorage";
 import { appStorage } from "../services/storage";
 import { resizeImage } from "../utils/image";
 import { hashPin } from "../utils/hash";
@@ -224,7 +225,7 @@ export function CrewProvider({ children }) {
 
   const deleteEvent = useCallback(async (eventId) => {
     await saveEvents(events.filter((event) => event.id !== eventId));
-    await appStorage.delete(`${STORAGE_KEYS.photoPrefix}${eventId}`);
+    await deleteEventPhotos(eventId);
   }, [events, saveEvents]);
 
   const toggleRsvp = useCallback(async (eventId) => {
@@ -258,20 +259,14 @@ export function CrewProvider({ children }) {
 
     try {
       const dataUrl = await resizeImage(file, 800);
-      const entry = {
-        data: dataUrl,
+      const photoCount = await uploadEventPhoto(eventId, {
+        dataUrl,
         by: myName || "익명",
         at: new Date().toISOString(),
-      };
-
-      const storageKey = `${STORAGE_KEYS.photoPrefix}${eventId}`;
-      const photos = (await appStorage.get(storageKey)) ?? [];
-      const nextPhotos = [...photos, entry];
-
-      await appStorage.set(storageKey, nextPhotos);
+      });
 
       const nextEvents = events.map((event) =>
-        event.id === eventId ? { ...event, photoCount: nextPhotos.length } : event,
+        event.id === eventId ? { ...event, photoCount } : event,
       );
 
       await saveEvents(nextEvents);
@@ -286,7 +281,7 @@ export function CrewProvider({ children }) {
       return { ok: false, reason: "missing-name" };
     }
 
-    const photos = (await appStorage.get(`${STORAGE_KEYS.photoPrefix}${eventId}`)) ?? [];
+    const photos = await listEventPhotos(eventId);
     if (!photos.length) {
       return { ok: false, reason: "missing-photo" };
     }
@@ -307,7 +302,7 @@ export function CrewProvider({ children }) {
   }, [events, myName, saveEvents]);
 
   const getPhotos = useCallback(async (eventId) => {
-    return (await appStorage.get(`${STORAGE_KEYS.photoPrefix}${eventId}`)) ?? [];
+    return listEventPhotos(eventId);
   }, []);
 
   const value = useMemo(() => ({
