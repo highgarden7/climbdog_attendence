@@ -2,12 +2,13 @@ import { loadMembers, saveMembers } from "./_membersStore.js";
 
 function normalizeMember(member) {
   if (typeof member === "string") {
-    return { name: member, pinHash: null };
+    return { name: member, pinHash: null, profile: {} };
   }
 
   return {
     name: member.name,
     pinHash: member.pinHash ?? member.pin ?? null,
+    profile: typeof member.profile === "object" && member.profile ? member.profile : {},
   };
 }
 

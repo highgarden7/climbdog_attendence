@@ -2,12 +2,13 @@ import { loadMembers, saveMembers } from "./_membersStore.js";
 
 function normalizeMember(member) {
   if (typeof member === "string") {
-    return { name: member, pinHash: null };
+    return { name: member, pinHash: null, profile: {} };
   }
 
   return {
     name: member.name,
     pinHash: member.pinHash ?? member.pin ?? null,
+    profile: typeof member.profile === "object" && member.profile ? member.profile : {},
   };
 }
 
@@ -15,6 +16,7 @@ function serializeMembers(members) {
   return members.map((member) => ({
     name: member.name,
     hasPin: Boolean(member.pinHash),
+    profile: member.profile ?? {},
   }));
 }
 
@@ -37,11 +39,36 @@ export default async function handler(request, response) {
       return;
     }
 
-    const nextMembers = [...existingMembers, ...uniqueNames.map((name) => ({ name, pinHash: null }))]
-      .sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    const nextMembers = [
+      ...existingMembers,
+      ...uniqueNames.map((name) => ({ name, pinHash: null, profile: {} })),
+    ].sort((left, right) => left.name.localeCompare(right.name, "ko"));
 
     await saveMembers(nextMembers);
     response.status(200).json({ created: uniqueNames.length, members: serializeMembers(nextMembers) });
+    return;
+  }
+
+  if (request.method === "PATCH") {
+    const name = `${request.body?.name ?? ""}`.trim();
+    const profile = typeof request.body?.profile === "object" && request.body.profile ? request.body.profile : null;
+
+    if (!name || !profile) {
+      response.status(400).json({ error: "Missing name or profile" });
+      return;
+    }
+
+    const members = (await loadMembers()).map(normalizeMember);
+    const member = members.find((item) => item.name === name);
+
+    if (!member) {
+      response.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    member.profile = profile;
+    await saveMembers(members);
+    response.status(200).json({ members: serializeMembers(members) });
     return;
   }
 

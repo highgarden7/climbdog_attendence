@@ -4,13 +4,14 @@ const MEMBER_STORAGE_KEY = "crew-members";
 
 function normalizeMember(member) {
   if (typeof member === "string") {
-    return { name: member, hasPin: false, pinHash: null };
+    return { name: member, hasPin: false, pinHash: null, profile: {} };
   }
 
   return {
     name: member.name,
     hasPin: typeof member.hasPin === "boolean" ? member.hasPin : Boolean(member.pinHash ?? member.pin),
     pinHash: member.pinHash ?? member.pin ?? null,
+    profile: typeof member.profile === "object" && member.profile ? member.profile : {},
   };
 }
 
@@ -54,8 +55,10 @@ export async function createMembers(names) {
     const uniqueNames = names
       .map((name) => `${name}`.trim())
       .filter((name) => name && !existingMembers.some((member) => member.name === name));
-    const nextMembers = [...existingMembers, ...uniqueNames.map((name) => ({ name, hasPin: false, pinHash: null }))]
-      .sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    const nextMembers = [
+      ...existingMembers,
+      ...uniqueNames.map((name) => ({ name, hasPin: false, pinHash: null, profile: {} })),
+    ].sort((left, right) => left.name.localeCompare(right.name, "ko"));
     await fallbackSaveMembers(nextMembers);
     return nextMembers;
   }
@@ -119,6 +122,24 @@ export async function clearMemberPin(name) {
     const members = await fallbackLoadMembers();
     const nextMembers = members.map((member) => (
       member.name === name ? { ...member, hasPin: false, pinHash: null } : member
+    ));
+    await fallbackSaveMembers(nextMembers);
+    return nextMembers;
+  }
+}
+
+export async function updateMemberProfile(name, profile) {
+  try {
+    const data = await requestJson("/api/members", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, profile }),
+    });
+    return data.members.map(normalizeMember);
+  } catch {
+    const members = await fallbackLoadMembers();
+    const nextMembers = members.map((member) => (
+      member.name === name ? { ...member, profile } : member
     ));
     await fallbackSaveMembers(nextMembers);
     return nextMembers;

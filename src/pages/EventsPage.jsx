@@ -5,7 +5,6 @@ import EventDetailModal from "../components/EventDetailModal";
 import Field from "../components/Field";
 import Modal from "../components/Modal";
 import { useCrew } from "../state/CrewContext";
-import { isPast, isToday } from "../utils/date";
 
 const initialForm = {
   title: "",
@@ -14,8 +13,77 @@ const initialForm = {
   note: "",
 };
 
+const DAY_RANGE = 90;
+const WEEKDAYS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+
+function parseIsoDate(iso) {
+  return new Date(`${iso}T00:00:00`);
+}
+
+function getDayDiffFromToday(iso) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = parseIsoDate(iso);
+  return Math.floor((target - today) / 86400000);
+}
+
+function formatGroupDate(iso) {
+  const date = parseIsoDate(iso);
+  return {
+    day: `${date.getMonth() + 1}.${date.getDate()}`,
+    weekday: WEEKDAYS[date.getDay()],
+  };
+}
+
+function groupEventsByDate(events) {
+  return events.reduce((groups, event) => {
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.date === event.date) {
+      lastGroup.events.push(event);
+      return groups;
+    }
+
+    groups.push({
+      date: event.date,
+      ...formatGroupDate(event.date),
+      events: [event],
+    });
+    return groups;
+  }, []);
+}
+
+function EventDateGroups({ groups, myName, onToggleRsvp, onSelect, past = false }) {
+  return (
+    <div className="event-groups">
+      {groups.map((group) => (
+        <section key={group.date} className="event-group">
+          <div className="event-group__date">
+            <strong>{group.day}</strong>
+            <span>{group.weekday}</span>
+          </div>
+          <div className="event-group__list">
+            {group.events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                myName={myName}
+                onToggleRsvp={onToggleRsvp}
+                onSelect={onSelect}
+                past={past}
+                compact
+                hideDate
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export default function EventsPage() {
   const {
+    isAdmin,
     events,
     myName,
     photoUploading,
@@ -30,9 +98,27 @@ export default function EventsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [activeTab, setActiveTab] = useState("upcoming");
 
-  const upcomingEvents = useMemo(() => events.filter((event) => !isPast(event.date) || isToday(event.date)), [events]);
-  const pastEvents = useMemo(() => events.filter((event) => isPast(event.date) && !isToday(event.date)), [events]);
+  const filteredEvents = useMemo(() => {
+    const inRangeEvents = events.filter((event) => {
+      const diff = getDayDiffFromToday(event.date);
+      return diff >= -DAY_RANGE && diff <= DAY_RANGE;
+    });
+
+    const upcoming = inRangeEvents
+      .filter((event) => getDayDiffFromToday(event.date) >= 0)
+      .sort((left, right) => left.date.localeCompare(right.date));
+
+    const past = inRangeEvents
+      .filter((event) => getDayDiffFromToday(event.date) < 0)
+      .sort((left, right) => right.date.localeCompare(left.date));
+
+    return { upcoming, past };
+  }, [events]);
+
+  const upcomingGroups = useMemo(() => groupEventsByDate(filteredEvents.upcoming), [filteredEvents.upcoming]);
+  const pastGroups = useMemo(() => groupEventsByDate(filteredEvents.past), [filteredEvents.past]);
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? null;
 
   async function handleCreateEvent() {
@@ -48,7 +134,7 @@ export default function EventsPage() {
   async function handleCheckIn(eventId) {
     const result = await checkIn(eventId);
     if (!result.ok && result.reason === "missing-photo") {
-      window.alert("📷 단체사진을 먼저 올려주세요! 사진 없이는 출석 체크가 안 돼요.");
+      window.alert("사진 인증샷을 먼저 올려주세요. 사진 없이 출석 체크는 할 수 없습니다.");
     }
   }
 
@@ -92,6 +178,7 @@ export default function EventsPage() {
         <EventDetailModal
           event={selectedEvent}
           myName={myName}
+          canDelete={isAdmin || selectedEvent.createdBy === myName}
           photoUploading={photoUploading}
           photoVersion={photoVersion}
           getPhotos={getPhotos}
@@ -103,15 +190,49 @@ export default function EventsPage() {
         />
       ) : null}
 
-      {upcomingEvents.length > 0 ? <div className="section-title">다가오는 벙개</div> : null}
-      {upcomingEvents.map((event) => (
-        <EventCard key={event.id} event={event} myName={myName} onToggleRsvp={toggleRsvp} onSelect={setSelectedEventId} />
-      ))}
+      <div className="events-tabbar">
+        <button
+          type="button"
+          className={`events-tabbar__tab ${activeTab === "upcoming" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("upcoming")}
+        >
+          다가오는 벙개
+          <span className="events-tabbar__count">{filteredEvents.upcoming.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`events-tabbar__tab ${activeTab === "past" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("past")}
+        >
+          지난 벙개
+          <span className="events-tabbar__count">{filteredEvents.past.length}</span>
+        </button>
+      </div>
 
-      {pastEvents.length > 0 ? <div className="section-title">지난 벙개</div> : null}
-      {pastEvents.slice(0, 10).map((event) => (
-        <EventCard key={event.id} event={event} myName={myName} onToggleRsvp={toggleRsvp} onSelect={setSelectedEventId} past />
-      ))}
+      <p className="events-range-hint">오늘 기준 ±90일 벙개만 표시합니다.</p>
+
+      {activeTab === "upcoming" ? (
+        upcomingGroups.length ? (
+          <EventDateGroups
+            groups={upcomingGroups}
+            myName={myName}
+            onToggleRsvp={toggleRsvp}
+            onSelect={setSelectedEventId}
+          />
+        ) : (
+          <EmptyState icon="🗓️" title="다가오는 벙개가 없어요" description="90일 안에 잡힌 벙개가 아직 없습니다." />
+        )
+      ) : pastGroups.length ? (
+        <EventDateGroups
+          groups={pastGroups}
+          myName={myName}
+          onToggleRsvp={toggleRsvp}
+          onSelect={setSelectedEventId}
+          past
+        />
+      ) : (
+        <EmptyState icon="📭" title="지난 벙개가 없어요" description="최근 90일 내 지난 벙개가 없습니다." />
+      )}
 
       {events.length === 0 ? <EmptyState icon="🪨" title="아직 벙개가 없어요" description="첫 벙개를 만들어보세요!" /> : null}
     </>

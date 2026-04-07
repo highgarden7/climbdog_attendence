@@ -21,7 +21,6 @@ export default function AppLayout() {
     closeMemberAuth,
     setupMemberPin,
     verifyMemberPin,
-    clearMyName,
   } = useCrew();
   const location = useLocation();
 
@@ -56,8 +55,9 @@ export default function AppLayout() {
           eventsCount={events.length}
           myName={myName}
           members={members}
+          isAdmin={isAdmin}
           onSelectMyName={requestMemberAuth}
-          onClearMyName={clearMyName}
+          onLogout={logout}
         />
         <AppNav isAdmin={isAdmin} upcomingCount={upcomingCount} />
         <main className="page">
@@ -72,9 +72,6 @@ export default function AppLayout() {
             onVerifyPin={verifyMemberPin}
           />
         ) : null}
-        <button type="button" className="logout-fab" onClick={logout}>
-          로그아웃
-        </button>
       </div>
     </div>
   );

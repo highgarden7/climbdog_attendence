@@ -1,13 +1,21 @@
 import { formatDate, isToday } from "../utils/date";
 
-export default function EventCard({ event, myName, onToggleRsvp, onSelect, past = false }) {
+export default function EventCard({
+  event,
+  myName,
+  onToggleRsvp,
+  onSelect,
+  past = false,
+  hideDate = false,
+  compact = false,
+}) {
   const joined = event.rsvp.includes(myName);
   const today = isToday(event.date);
   const accent = past ? "#999" : today ? "#ff6b35" : "#4ecdc4";
 
   return (
     <article
-      className={`event-card ${past ? "is-past" : ""}`}
+      className={`event-card ${past ? "is-past" : ""} ${compact ? "is-compact" : ""}`}
       style={{ borderLeftColor: accent }}
       onClick={() => onSelect(event.id)}
       role="button"
@@ -21,12 +29,16 @@ export default function EventCard({ event, myName, onToggleRsvp, onSelect, past 
       <div className="event-card__top">
         <div>
           <div className="event-card__title">
+            {!hideDate ? (
+              <span className={`event-card__date-badge ${today ? "is-today" : ""}`}>
+                {formatDate(event.date)}
+              </span>
+            ) : null}
             <span>{event.title}</span>
             {today ? <span className="event-card__today">TODAY</span> : null}
           </div>
           <div className="event-card__meta">
-            <span>{formatDate(event.date)}</span>
-            {event.location ? <span>· {event.location}</span> : null}
+            {event.location ? <span>{event.location}</span> : null}
             {event.photoCount > 0 ? <span className="event-card__photos">📷 {event.photoCount}</span> : null}
           </div>
         </div>

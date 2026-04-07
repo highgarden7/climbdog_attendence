@@ -5,6 +5,7 @@ import Modal from "./Modal";
 export default function EventDetailModal({
   event,
   myName,
+  canDelete,
   photoUploading,
   photoVersion,
   getPhotos,
@@ -49,12 +50,12 @@ export default function EventDetailModal({
         <div className="detail-row">📅 {formatDate(event.date)}</div>
         {event.location ? <div className="detail-row">📍 {event.location}</div> : null}
         {event.note ? <div className="detail-row">📝 {event.note}</div> : null}
-        <div className="detail-row">👤 만든이: {event.createdBy}</div>
+        <div className="detail-row">👤 만든 사람 {event.createdBy}</div>
 
         <section className="detail-section">
           <div className="detail-section__title">
-            📸 단체사진 ({photos.length}장)
-            {!hasPhotos ? <span className="detail-section__hint">출석 체크에 필요!</span> : null}
+            📸 인증사진 ({photos.length}장)
+            {!hasPhotos ? <span className="detail-section__hint">출석 체크 전 필수!</span> : null}
           </div>
 
           {loadingPhotos ? <div className="detail-section__message">불러오는 중...</div> : null}
@@ -71,7 +72,7 @@ export default function EventDetailModal({
           ) : null}
 
           {!loadingPhotos && photos.length === 0 ? (
-            <div className="detail-section__message">사진을 먼저 올려야 출석 체크가 가능해요!</div>
+            <div className="detail-section__message">사진을 먼저 올려야 출석 체크가 가능해요.</div>
           ) : null}
 
           {myName ? (
@@ -96,7 +97,7 @@ export default function EventDetailModal({
         </section>
 
         <section className="detail-section">
-          <div className="detail-section__title">참가 신청 ({event.rsvp.length}명)</div>
+          <div className="detail-section__title">참가 요청 ({event.rsvp.length}명)</div>
           <div className="name-cloud">
             {event.rsvp.length === 0 ? <span className="detail-section__message">아직 없어요</span> : null}
             {event.rsvp.map((name) => (
@@ -110,7 +111,7 @@ export default function EventDetailModal({
           {myName ? (
             <div className="detail-actions">
               <button type="button" className={`action-button ${joined ? "is-danger" : ""}`} onClick={() => onToggleRsvp(event.id)}>
-                {joined ? "참가 취소" : "참가할게요!"}
+                {joined ? "참가 취소" : "참가할게요"}
               </button>
 
               {isEventToday && joined ? (
@@ -127,23 +128,25 @@ export default function EventDetailModal({
           ) : null}
         </section>
 
-        <div className="modal-footer">
-          {confirmDelete ? (
-            <div className="modal-footer__confirm">
-              <span>정말 삭제?</span>
-              <button type="button" className="small-button is-danger" onClick={() => onDelete(event.id)}>
-                삭제
+        {canDelete ? (
+          <div className="modal-footer">
+            {confirmDelete ? (
+              <div className="modal-footer__confirm">
+                <span>정말 삭제?</span>
+                <button type="button" className="small-button is-danger" onClick={() => onDelete(event.id)}>
+                  삭제
+                </button>
+                <button type="button" className="small-button" onClick={() => setConfirmDelete(false)}>
+                  취소
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="text-button" onClick={() => setConfirmDelete(true)}>
+                벙개 삭제
               </button>
-              <button type="button" className="small-button" onClick={() => setConfirmDelete(false)}>
-                취소
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="text-button" onClick={() => setConfirmDelete(true)}>
-              벙개 삭제
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        ) : null}
       </Modal>
 
       {selectedPhoto ? (

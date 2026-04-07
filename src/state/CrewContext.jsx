@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "../config/constants";
-import { clearMemberPin as clearMemberPinRemote, createMembers, deleteMember, listMembers, setupMemberPin as setupMemberPinRemote, verifyMemberPin as verifyMemberPinRemote } from "../services/memberApi";
+import {
+  clearMemberPin as clearMemberPinRemote,
+  createMembers,
+  deleteMember,
+  listMembers,
+  setupMemberPin as setupMemberPinRemote,
+  updateMemberProfile as updateMemberProfileRemote,
+  verifyMemberPin as verifyMemberPinRemote,
+} from "../services/memberApi";
 import { deleteEventPhotos, listEventPhotos, uploadEventPhoto } from "../services/photoStorage";
 import { appStorage } from "../services/storage";
 import { resizeImage } from "../utils/image";
@@ -10,18 +18,6 @@ const CrewContext = createContext(null);
 const USER_ROLE = "member";
 const ADMIN_ROLE = "admin";
 
-function getSessionStorage() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
 function getLocalStorage() {
   if (typeof window === "undefined") {
     return null;
@@ -29,6 +25,18 @@ function getLocalStorage() {
 
   try {
     return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function getSessionStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.sessionStorage;
   } catch {
     return null;
   }
@@ -44,18 +52,19 @@ function buildEvent(form, myName) {
     rsvp: [],
     checkin: [],
     photoCount: 0,
-    createdBy: myName || "크루장",
+    createdBy: myName || "크루원",
   };
 }
 
 function normalizeMember(member) {
   if (typeof member === "string") {
-    return { name: member, hasPin: false };
+    return { name: member, hasPin: false, profile: {} };
   }
 
   return {
     name: member.name,
     hasPin: typeof member.hasPin === "boolean" ? member.hasPin : Boolean(member.pinHash ?? member.pin),
+    profile: typeof member.profile === "object" && member.profile ? member.profile : {},
   };
 }
 
@@ -74,11 +83,6 @@ export function CrewProvider({ children }) {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
 
-  const saveMembers = useCallback(async (nextMembers) => {
-    setMembers(nextMembers);
-    await appStorage.set(STORAGE_KEYS.members, nextMembers);
-  }, []);
-
   const saveEvents = useCallback(async (nextEvents) => {
     setEvents(nextEvents);
     await appStorage.set(STORAGE_KEYS.events, nextEvents);
@@ -93,8 +97,7 @@ export function CrewProvider({ children }) {
     ]);
 
     if (storedMembers) {
-      const normalizedMembers = normalizeMembers(storedMembers);
-      setMembers(normalizedMembers);
+      setMembers(normalizeMembers(storedMembers));
     }
 
     if (storedEvents) {
@@ -102,7 +105,8 @@ export function CrewProvider({ children }) {
     }
 
     const sessionStorage = getSessionStorage();
-    const selectedName = sessionStorage?.getItem(STORAGE_KEYS.myName);
+    const localStorage = getLocalStorage();
+    const selectedName = localStorage?.getItem(STORAGE_KEYS.myName);
     if (selectedName) {
       setMyName(selectedName);
     }
@@ -129,16 +133,14 @@ export function CrewProvider({ children }) {
   const logout = useCallback(() => {
     setAuthed(false);
     setRole(USER_ROLE);
-    setMyName("");
     const sessionStorage = getSessionStorage();
     sessionStorage?.removeItem(STORAGE_KEYS.auth);
     sessionStorage?.removeItem(STORAGE_KEYS.role);
-    sessionStorage?.removeItem(STORAGE_KEYS.myName);
   }, []);
 
   const finalizeMyName = useCallback((name) => {
     setMyName(name);
-    getSessionStorage()?.setItem(STORAGE_KEYS.myName, name);
+    getLocalStorage()?.setItem(STORAGE_KEYS.myName, name);
   }, []);
 
   const requestMemberAuth = useCallback((name) => {
@@ -179,7 +181,7 @@ export function CrewProvider({ children }) {
 
   const clearMyName = useCallback(() => {
     setMyName("");
-    getSessionStorage()?.removeItem(STORAGE_KEYS.myName);
+    getLocalStorage()?.removeItem(STORAGE_KEYS.myName);
   }, []);
 
   const addMembers = useCallback(async (rawMembers) => {
@@ -213,6 +215,11 @@ export function CrewProvider({ children }) {
     }
   }, [clearMyName, myName]);
 
+  const updateMemberProfile = useCallback(async (memberName, profile) => {
+    const nextMembers = await updateMemberProfileRemote(memberName, profile);
+    setMembers(normalizeMembers(nextMembers));
+  }, []);
+
   const createEvent = useCallback(async (form) => {
     if (!form.date) {
       return false;
@@ -224,9 +231,19 @@ export function CrewProvider({ children }) {
   }, [events, myName, saveEvents]);
 
   const deleteEvent = useCallback(async (eventId) => {
+    const targetEvent = events.find((event) => event.id === eventId);
+    if (!targetEvent) {
+      return;
+    }
+
+    const canDelete = role === ADMIN_ROLE || targetEvent.createdBy === myName;
+    if (!canDelete) {
+      return;
+    }
+
     await saveEvents(events.filter((event) => event.id !== eventId));
     await deleteEventPhotos(eventId);
-  }, [events, saveEvents]);
+  }, [events, myName, role, saveEvents]);
 
   const toggleRsvp = useCallback(async (eventId) => {
     if (!myName) {
@@ -265,9 +282,9 @@ export function CrewProvider({ children }) {
         at: new Date().toISOString(),
       });
 
-      const nextEvents = events.map((event) =>
-        event.id === eventId ? { ...event, photoCount } : event,
-      );
+      const nextEvents = events.map((event) => (
+        event.id === eventId ? { ...event, photoCount } : event
+      ));
 
       await saveEvents(nextEvents);
       setPhotoVersion((version) => version + 1);
@@ -301,9 +318,7 @@ export function CrewProvider({ children }) {
     return { ok: true };
   }, [events, myName, saveEvents]);
 
-  const getPhotos = useCallback(async (eventId) => {
-    return listEventPhotos(eventId);
-  }, []);
+  const getPhotos = useCallback(async (eventId) => listEventPhotos(eventId), []);
 
   const value = useMemo(() => ({
     authed,
@@ -325,6 +340,7 @@ export function CrewProvider({ children }) {
     addMembers,
     removeMember,
     clearMemberPin,
+    updateMemberProfile,
     createEvent,
     deleteEvent,
     toggleRsvp,
@@ -351,6 +367,7 @@ export function CrewProvider({ children }) {
     addMembers,
     removeMember,
     clearMemberPin,
+    updateMemberProfile,
     createEvent,
     deleteEvent,
     toggleRsvp,
