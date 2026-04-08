@@ -8,7 +8,7 @@ import {
 } from "firebase/storage";
 import { STORAGE_KEYS } from "../config/constants";
 import { appStorage } from "./storage";
-import { getFirebaseStorage } from "./firebase";
+import { ensureFirebaseStorage } from "./firebase";
 
 function buildLocalStorageKey(eventId) {
   return `${STORAGE_KEYS.photoPrefix}${eventId}`;
@@ -31,7 +31,7 @@ async function deleteLocalPhotos(eventId) {
 }
 
 export async function uploadEventPhoto(eventId, { dataUrl, by, at }) {
-  const storage = getFirebaseStorage();
+  const storage = ensureFirebaseStorage();
 
   if (!storage) {
     const photos = await loadLocalPhotos(eventId);
@@ -51,7 +51,7 @@ export async function uploadEventPhoto(eventId, { dataUrl, by, at }) {
 }
 
 export async function listEventPhotos(eventId) {
-  const storage = getFirebaseStorage();
+  const storage = ensureFirebaseStorage();
 
   if (!storage) {
     return loadLocalPhotos(eventId);
@@ -79,7 +79,7 @@ export async function listEventPhotos(eventId) {
 }
 
 export async function deleteEventPhotos(eventId) {
-  const storage = getFirebaseStorage();
+  const storage = ensureFirebaseStorage();
 
   if (!storage) {
     await deleteLocalPhotos(eventId);

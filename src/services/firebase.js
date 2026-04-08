@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -15,16 +16,55 @@ function hasFirebaseConfig() {
 }
 
 let firebaseApp = null;
+let firebaseDb = null;
 let firebaseStorage = null;
 
-export function getFirebaseStorage() {
+function getFirebaseApp() {
   if (!hasFirebaseConfig()) {
     return null;
   }
 
   if (!firebaseApp) {
     firebaseApp = initializeApp(firebaseConfig);
-    firebaseStorage = getStorage(firebaseApp);
+  }
+
+  return firebaseApp;
+}
+
+export function hasFirebaseServices() {
+  return hasFirebaseConfig();
+}
+
+export function getFirebaseDb() {
+  const app = getFirebaseApp();
+  if (!app) {
+    return null;
+  }
+
+  if (!firebaseDb) {
+    firebaseDb = getFirestore(app);
+  }
+
+  return firebaseDb;
+}
+
+export function getFirebaseStorage() {
+  const app = getFirebaseApp();
+  if (!app) {
+    return null;
+  }
+
+  return firebaseStorage;
+}
+
+export function ensureFirebaseStorage() {
+  const app = getFirebaseApp();
+  if (!app) {
+    return null;
+  }
+
+  if (!firebaseStorage) {
+    firebaseStorage = getStorage(app);
   }
 
   return firebaseStorage;

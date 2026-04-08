@@ -3,14 +3,16 @@ import { STORAGE_KEYS } from "../config/constants";
 import {
   clearMemberPin as clearMemberPinRemote,
   createMembers,
+  deleteEventById,
+  listEvents,
   deleteMember,
   listMembers,
+  saveEvent,
   setupMemberPin as setupMemberPinRemote,
   updateMemberProfile as updateMemberProfileRemote,
   verifyMemberPin as verifyMemberPinRemote,
-} from "../services/memberApi";
+} from "../services/firestoreData";
 import { deleteEventPhotos, listEventPhotos, uploadEventPhoto } from "../services/photoStorage";
-import { appStorage } from "../services/storage";
 import { resizeImage } from "../utils/image";
 import { hashPin } from "../utils/hash";
 
@@ -77,7 +79,7 @@ function toErrorMessage(error) {
     return error.message;
   }
 
-  return "멤버 서버 저장소에 연결하지 못했습니다.";
+  return "Firebase 데이터 저장소에 연결하지 못했습니다.";
 }
 
 export function CrewProvider({ children }) {
@@ -90,11 +92,10 @@ export function CrewProvider({ children }) {
   const [memberAuthRequest, setMemberAuthRequest] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
-  const [memberApiError, setMemberApiError] = useState("");
+  const [dataError, setDataError] = useState("");
 
-  const saveEvents = useCallback(async (nextEvents) => {
+  const saveEventsState = useCallback((nextEvents) => {
     setEvents(nextEvents);
-    await appStorage.set(STORAGE_KEYS.events, nextEvents);
   }, []);
 
   const load = useCallback(async () => {
@@ -103,23 +104,16 @@ export function CrewProvider({ children }) {
     try {
       const [storedMembers, storedEvents] = await Promise.all([
         listMembers(),
-        appStorage.get(STORAGE_KEYS.events),
+        listEvents(),
       ]);
 
       setMembers(normalizeMembers(storedMembers));
-      setMemberApiError("");
-
-      if (storedEvents) {
-        setEvents(storedEvents);
-      }
+      setEvents(storedEvents);
+      setDataError("");
     } catch (error) {
       setMembers([]);
-      setMemberApiError(toErrorMessage(error));
-
-      const storedEvents = await appStorage.get(STORAGE_KEYS.events);
-      if (storedEvents) {
-        setEvents(storedEvents);
-      }
+      setEvents([]);
+      setDataError(toErrorMessage(error));
     }
 
     const sessionStorage = getSessionStorage();
@@ -177,15 +171,15 @@ export function CrewProvider({ children }) {
     setMemberAuthRequest(null);
   }, []);
 
-  const dismissMemberApiError = useCallback(() => {
-    setMemberApiError("");
+  const dismissDataError = useCallback(() => {
+    setDataError("");
   }, []);
 
   const setupMemberPin = useCallback(async (name, pin) => {
     const pinHash = await hashPin(name, pin);
     const nextMembers = await setupMemberPinRemote(name, pinHash);
     setMembers(normalizeMembers(nextMembers));
-    setMemberApiError("");
+    setDataError("");
     finalizeMyName(name);
     setMemberAuthRequest(null);
   }, [finalizeMyName]);
@@ -197,7 +191,7 @@ export function CrewProvider({ children }) {
       return false;
     }
 
-    setMemberApiError("");
+    setDataError("");
     finalizeMyName(name);
     setMemberAuthRequest(null);
     return true;
@@ -220,14 +214,14 @@ export function CrewProvider({ children }) {
 
     const nextMembers = await createMembers(names);
     setMembers(normalizeMembers(nextMembers));
-    setMemberApiError("");
+    setDataError("");
     return true;
   }, [members]);
 
   const removeMember = useCallback(async (memberName) => {
     const nextMembers = await deleteMember(memberName);
     setMembers(normalizeMembers(nextMembers));
-    setMemberApiError("");
+    setDataError("");
     if (myName === memberName) {
       clearMyName();
     }
@@ -236,7 +230,7 @@ export function CrewProvider({ children }) {
   const clearMemberPin = useCallback(async (memberName) => {
     const nextMembers = await clearMemberPinRemote(memberName);
     setMembers(normalizeMembers(nextMembers));
-    setMemberApiError("");
+    setDataError("");
     if (myName === memberName) {
       clearMyName();
     }
@@ -245,7 +239,7 @@ export function CrewProvider({ children }) {
   const updateMemberProfile = useCallback(async (memberName, profile) => {
     const nextMembers = await updateMemberProfileRemote(memberName, profile);
     setMembers(normalizeMembers(nextMembers));
-    setMemberApiError("");
+    setDataError("");
   }, []);
 
   const createEvent = useCallback(async (form) => {
@@ -254,9 +248,10 @@ export function CrewProvider({ children }) {
     }
 
     const nextEvent = buildEvent(form, myName);
-    await saveEvents([nextEvent, ...events]);
+    await saveEvent(nextEvent);
+    saveEventsState([nextEvent, ...events]);
     return true;
-  }, [events, myName, saveEvents]);
+  }, [events, myName, saveEventsState]);
 
   const deleteEvent = useCallback(async (eventId) => {
     const targetEvent = events.find((event) => event.id === eventId);
@@ -269,9 +264,10 @@ export function CrewProvider({ children }) {
       return;
     }
 
-    await saveEvents(events.filter((event) => event.id !== eventId));
+    await deleteEventById(eventId);
+    saveEventsState(events.filter((event) => event.id !== eventId));
     await deleteEventPhotos(eventId);
-  }, [events, myName, role, saveEvents]);
+  }, [events, myName, role, saveEventsState]);
 
   const toggleRsvp = useCallback(async (eventId) => {
     if (!myName) {
@@ -292,8 +288,12 @@ export function CrewProvider({ children }) {
       };
     });
 
-    await saveEvents(nextEvents);
-  }, [events, myName, saveEvents]);
+    const targetEvent = nextEvents.find((event) => event.id === eventId);
+    if (targetEvent) {
+      await saveEvent(targetEvent);
+      saveEventsState(nextEvents);
+    }
+  }, [events, myName, saveEventsState]);
 
   const uploadPhoto = useCallback(async (eventId, file) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -314,12 +314,17 @@ export function CrewProvider({ children }) {
         event.id === eventId ? { ...event, photoCount } : event
       ));
 
-      await saveEvents(nextEvents);
+      const targetEvent = nextEvents.find((event) => event.id === eventId);
+      if (targetEvent) {
+        await saveEvent(targetEvent);
+        saveEventsState(nextEvents);
+      }
+
       setPhotoVersion((version) => version + 1);
     } finally {
       setPhotoUploading(false);
     }
-  }, [events, myName, saveEvents]);
+  }, [events, myName, saveEventsState]);
 
   const checkIn = useCallback(async (eventId) => {
     if (!myName) {
@@ -342,9 +347,14 @@ export function CrewProvider({ children }) {
       };
     });
 
-    await saveEvents(nextEvents);
+    const targetEvent = nextEvents.find((event) => event.id === eventId);
+    if (targetEvent) {
+      await saveEvent(targetEvent);
+      saveEventsState(nextEvents);
+    }
+
     return { ok: true };
-  }, [events, myName, saveEvents]);
+  }, [events, myName, saveEventsState]);
 
   const getPhotos = useCallback(async (eventId) => listEventPhotos(eventId), []);
 
@@ -358,12 +368,12 @@ export function CrewProvider({ children }) {
     memberAuthRequest,
     photoUploading,
     photoVersion,
-    memberApiError,
+    memberApiError: dataError,
     passGate,
     logout,
     requestMemberAuth,
     closeMemberAuth,
-    dismissMemberApiError,
+    dismissMemberApiError: dismissDataError,
     setupMemberPin,
     verifyMemberPin,
     clearMyName,
@@ -387,12 +397,12 @@ export function CrewProvider({ children }) {
     memberAuthRequest,
     photoUploading,
     photoVersion,
-    memberApiError,
+    dataError,
     passGate,
     logout,
     requestMemberAuth,
     closeMemberAuth,
-    dismissMemberApiError,
+    dismissDataError,
     setupMemberPin,
     verifyMemberPin,
     clearMyName,

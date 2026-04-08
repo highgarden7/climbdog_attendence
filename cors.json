@@ -1,0 +1,10 @@
+cat > cors.json << 'EOF'
+[
+  {
+    "origin": ["https://climbdog.cloud", "http://localhost:5173"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization"]
+  }
+]
+EOF

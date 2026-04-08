@@ -54,7 +54,7 @@ export default function AppLayout() {
       <div className="app-frame">
         {memberApiError ? (
           <div className="app-alert" role="alert">
-            <span>멤버 서버 오류: {memberApiError}</span>
+            <span>데이터 저장소 오류: {memberApiError}</span>
             <button type="button" className="app-alert__close" onClick={dismissMemberApiError}>
               닫기
             </button>

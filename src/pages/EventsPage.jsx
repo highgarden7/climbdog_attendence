@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
 import EventCard from "../components/EventCard";
 import EventDetailModal from "../components/EventDetailModal";
@@ -95,6 +96,7 @@ export default function EventsPage() {
     checkIn,
     getPhotos,
   } = useCrew();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [selectedEventId, setSelectedEventId] = useState(null);
@@ -121,6 +123,48 @@ export default function EventsPage() {
   const pastGroups = useMemo(() => groupEventsByDate(filteredEvents.past), [filteredEvents.past]);
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? null;
 
+  useEffect(() => {
+    const eventIdFromUrl = searchParams.get("event");
+    if (!eventIdFromUrl) {
+      setSelectedEventId(null);
+      return;
+    }
+
+    const targetEvent = events.find((event) => event.id === eventIdFromUrl);
+    if (!targetEvent) {
+      return;
+    }
+
+    setSelectedEventId(eventIdFromUrl);
+    setActiveTab(getDayDiffFromToday(targetEvent.date) >= 0 ? "upcoming" : "past");
+  }, [events, searchParams]);
+
+  function openEvent(eventId) {
+    setSelectedEventId(eventId);
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.set("event", eventId);
+      return nextParams;
+    });
+  }
+
+  function closeEventModal() {
+    setSelectedEventId(null);
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.delete("event");
+      return nextParams;
+    });
+  }
+
+  async function handleCopyEventLink(eventId) {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.pathname = "/events";
+    shareUrl.searchParams.set("event", eventId);
+    await navigator.clipboard.writeText(shareUrl.toString());
+    window.alert("벙개 링크를 복사했어요.");
+  }
+
   async function handleCreateEvent() {
     const created = await createEvent(form);
     if (!created) {
@@ -140,7 +184,7 @@ export default function EventsPage() {
 
   async function handleDeleteEvent(eventId) {
     await deleteEvent(eventId);
-    setSelectedEventId(null);
+    closeEventModal();
   }
 
   return (
@@ -182,11 +226,12 @@ export default function EventsPage() {
           photoUploading={photoUploading}
           photoVersion={photoVersion}
           getPhotos={getPhotos}
-          onClose={() => setSelectedEventId(null)}
+          onClose={closeEventModal}
           onToggleRsvp={toggleRsvp}
           onCheckIn={handleCheckIn}
           onUploadPhoto={uploadPhoto}
           onDelete={handleDeleteEvent}
+          onCopyLink={handleCopyEventLink}
         />
       ) : null}
 
@@ -217,7 +262,7 @@ export default function EventsPage() {
             groups={upcomingGroups}
             myName={myName}
             onToggleRsvp={toggleRsvp}
-            onSelect={setSelectedEventId}
+            onSelect={openEvent}
           />
         ) : (
           <EmptyState icon="🗓️" title="다가오는 벙개가 없어요" description="90일 안에 잡힌 벙개가 아직 없습니다." />
@@ -227,7 +272,7 @@ export default function EventsPage() {
           groups={pastGroups}
           myName={myName}
           onToggleRsvp={toggleRsvp}
-          onSelect={setSelectedEventId}
+          onSelect={openEvent}
           past
         />
       ) : (

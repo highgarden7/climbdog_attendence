@@ -14,10 +14,12 @@ export default function EventDetailModal({
   onCheckIn,
   onUploadPhoto,
   onDelete,
+  onCopyLink,
 }) {
   const fileInputRef = useRef(null);
   const [photos, setPhotos] = useState([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const [photoError, setPhotoError] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -26,10 +28,22 @@ export default function EventDetailModal({
 
     async function loadPhotos() {
       setLoadingPhotos(true);
-      const nextPhotos = await getPhotos(event.id);
-      if (active) {
-        setPhotos(nextPhotos);
-        setLoadingPhotos(false);
+      setPhotoError("");
+
+      try {
+        const nextPhotos = await getPhotos(event.id);
+        if (active) {
+          setPhotos(nextPhotos);
+        }
+      } catch (error) {
+        if (active) {
+          setPhotos([]);
+          setPhotoError(error instanceof Error ? error.message : "사진을 불러오지 못했습니다.");
+        }
+      } finally {
+        if (active) {
+          setLoadingPhotos(false);
+        }
       }
     }
 
@@ -52,6 +66,12 @@ export default function EventDetailModal({
         {event.note ? <div className="detail-row">📝 {event.note}</div> : null}
         <div className="detail-row">👤 만든 사람 {event.createdBy}</div>
 
+        <div className="detail-share">
+          <button type="button" className="small-button" onClick={() => onCopyLink(event.id)}>
+            링크 복사
+          </button>
+        </div>
+
         <section className="detail-section">
           <div className="detail-section__title">
             📸 인증사진 ({photos.length}장)
@@ -59,8 +79,13 @@ export default function EventDetailModal({
           </div>
 
           {loadingPhotos ? <div className="detail-section__message">불러오는 중...</div> : null}
+          {!loadingPhotos && photoError ? (
+            <div className="detail-section__message detail-section__message--error">
+              사진 저장소 오류: {photoError}
+            </div>
+          ) : null}
 
-          {!loadingPhotos && photos.length > 0 ? (
+          {!loadingPhotos && !photoError && photos.length > 0 ? (
             <div className="photo-grid">
               {photos.map((photo, index) => (
                 <button key={`${photo.at}-${index}`} type="button" className="photo-thumb" onClick={() => setSelectedPhoto(photo)}>
@@ -71,7 +96,7 @@ export default function EventDetailModal({
             </div>
           ) : null}
 
-          {!loadingPhotos && photos.length === 0 ? (
+          {!loadingPhotos && !photoError && photos.length === 0 ? (
             <div className="detail-section__message">사진을 먼저 올려야 출석 체크가 가능해요.</div>
           ) : null}
 
