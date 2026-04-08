@@ -160,8 +160,8 @@ export function getShareMetadata(event, request) {
   }
 
   const formattedDate = formatEventDate(event.date);
-  const title = `${event.title} | ${APP_NAME}`;
-  const description = [formattedDate, event.location].filter(Boolean).join(" · ") || DEFAULT_DESCRIPTION;
+  const title = [event.title, formattedDate].filter(Boolean).join(" | ") || "벙개";
+  const description = [event.location, event.note].filter(Boolean).join(" · ") || DEFAULT_DESCRIPTION;
   const canonicalUrl = buildAbsoluteUrl(request, `/events?event=${encodeURIComponent(event.id)}`);
   const imageUrl = buildAbsoluteUrl(request, `/api/og-image?event=${encodeURIComponent(event.id)}`);
 
