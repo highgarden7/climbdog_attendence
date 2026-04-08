@@ -86,7 +86,7 @@ function EventFormModal({ mode, form, onChange, onClose, onSubmit }) {
   const isEdit = mode === "edit";
 
   return (
-    <Modal title={isEdit ? "벙개 수정" : "🎯 벙개 만들기"} onClose={onClose}>
+    <Modal title={isEdit ? "벙개 수정" : "🎯 벙개 만들기"} onClose={onClose} level="top">
       <Field label="제목">
         <input className="input" value={form.title} onChange={(event) => onChange({ ...form, title: event.target.value })} />
       </Field>
