@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const APP_NAME = "클라독";
+const APP_NAME = "Climb Dog 🐾";
 const DEFAULT_DESCRIPTION = "클라이밍 벙개 일정과 참여 현황을 확인해보세요.";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,6 +155,9 @@ export function getShareMetadata(event, request) {
       title: APP_NAME,
       description: DEFAULT_DESCRIPTION,
       imageUrl,
+      imageType: "image/png",
+      imageWidth: "1200",
+      imageHeight: "630",
       canonicalUrl: buildAbsoluteUrl(request, "/events"),
     };
   }
@@ -169,6 +172,9 @@ export function getShareMetadata(event, request) {
     title,
     description,
     imageUrl,
+    imageType: "image/png",
+    imageWidth: "1200",
+    imageHeight: "630",
     canonicalUrl,
   };
 }
