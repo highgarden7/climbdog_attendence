@@ -15,6 +15,7 @@ const initialForm = {
 };
 
 const DAY_RANGE = 90;
+const SHARE_LINK_VERSION = "2";
 const WEEKDAYS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 function parseIsoDate(iso) {
@@ -225,6 +226,7 @@ export default function EventsPage() {
     const shareUrl = new URL(window.location.href);
     shareUrl.pathname = "/events";
     shareUrl.searchParams.set("event", eventId);
+    shareUrl.searchParams.set("v", SHARE_LINK_VERSION);
     await navigator.clipboard.writeText(shareUrl.toString());
     window.alert("벙개 링크를 복사했어요.");
   }
