@@ -141,14 +141,14 @@ export default function EventDetailModal({
                 {joined ? "참가 취소" : "참가할게요"}
               </button>
 
-              {isEventToday && joined ? (
+              {joined ? (
                 <button
                   type="button"
                   className={`action-button ${checkedIn ? "is-done" : hasPhotos ? "is-primary" : "is-disabled"}`}
                   onClick={() => onCheckIn(event.id)}
                   disabled={checkedIn}
                 >
-                  {checkedIn ? "출석 완료 ✓" : hasPhotos ? "출석 체크" : "📷 사진 필요"}
+                  {checkedIn ? "출석 완료 ✓" : hasPhotos ? (isEventToday ? "출석 체크" : "출석 체크 등록") : "📷 사진 필요"}
                 </button>
               ) : null}
             </div>

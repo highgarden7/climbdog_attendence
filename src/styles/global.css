@@ -154,6 +154,27 @@ button { cursor: pointer; }
 .stats-row__rank.is-top { color: #fff; }
 .stats-row__body { flex: 1; min-width: 0; }
 .stats-row__name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; font-size: 0.9rem; font-weight: 600; }
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-pill--생존 {
+  background: rgba(46, 160, 67, 0.14);
+  color: #2e8b57;
+}
+.status-pill--부상 {
+  background: rgba(255, 140, 66, 0.18);
+  color: #d66a1f;
+}
+.status-pill--바쁨 {
+  background: rgba(255, 205, 86, 0.2);
+  color: #a87400;
+}
 .stats-row__title { padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
 .stats-row__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; color: #8d95a3; font-size: 0.76rem; }
 .stats-row__meta .is-overdue { color: #d62839; font-weight: 700; }

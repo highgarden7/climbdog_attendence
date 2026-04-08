@@ -43,6 +43,15 @@ function compareAttendanceDate(left, right, sortOrder) {
     : left.effectiveLastDate.localeCompare(right.effectiveLastDate);
 }
 
+function getStatusLabel(status) {
+  const normalized = `${status ?? ""}`.trim();
+  if (normalized === "생존" || normalized === "부상" || normalized === "바쁨") {
+    return normalized;
+  }
+
+  return "";
+}
+
 export default function AttendancePage() {
   const { members, events } = useCrew();
   const [sortOrder, setSortOrder] = useState("desc");
@@ -67,6 +76,7 @@ export default function AttendancePage() {
         return {
           name: member.name,
           displayName: formatMemberDisplayName(member),
+          status: getStatusLabel(member.profile?.status),
           attended,
           rate,
           title: getTitle(rate),
@@ -121,6 +131,11 @@ export default function AttendancePage() {
                 <div className="stats-row__body">
                   <div className="stats-row__name">
                     <span>{stat.displayName}</span>
+                    {stat.status ? (
+                      <span className={`status-pill status-pill--${stat.status}`}>
+                        {stat.status}
+                      </span>
+                    ) : null}
                     <span className="stats-row__title" style={{ color: stat.title.color, backgroundColor: `${stat.title.color}22` }}>
                       {stat.title.icon} {stat.title.label}
                     </span>
