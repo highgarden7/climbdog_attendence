@@ -13,6 +13,10 @@ import { getFirebaseDb, hasFirebaseServices } from "./firebase";
 const MEMBERS_COLLECTION = "members";
 const EVENTS_COLLECTION = "events";
 
+function memberDocId(name) {
+  return encodeURIComponent(`${name}`.trim());
+}
+
 function normalizeMember(member) {
   if (typeof member === "string") {
     return { name: member, hasPin: false, pinHash: null, profile: {} };
@@ -85,7 +89,10 @@ export async function listMembers() {
     const db = assertFirebaseAvailable();
     const snapshot = await getDocs(collection(db, MEMBERS_COLLECTION));
     return snapshot.docs
-      .map((memberDoc) => normalizeMember({ name: memberDoc.id, ...memberDoc.data() }))
+      .map((memberDoc) => normalizeMember({
+        name: memberDoc.data().name ?? decodeURIComponent(memberDoc.id),
+        ...memberDoc.data(),
+      }))
       .sort((left, right) => left.name.localeCompare(right.name, "ko"));
   } catch (error) {
     if (!shouldUseLocalFallback()) {
@@ -105,7 +112,8 @@ export async function createMembers(names) {
       .filter((name) => name && !existingMembers.some((member) => member.name === name));
 
     await Promise.all(
-      uniqueNames.map((name) => setDoc(doc(db, MEMBERS_COLLECTION, name), {
+      uniqueNames.map((name) => setDoc(doc(db, MEMBERS_COLLECTION, memberDocId(name)), {
+        name,
         pinHash: null,
         profile: {},
       })),
@@ -133,7 +141,7 @@ export async function createMembers(names) {
 export async function deleteMember(name) {
   try {
     const db = assertFirebaseAvailable();
-    await deleteDoc(doc(db, MEMBERS_COLLECTION, name));
+    await deleteDoc(doc(db, MEMBERS_COLLECTION, memberDocId(name)));
     return listMembers();
   } catch (error) {
     if (!shouldUseLocalFallback()) {
@@ -150,7 +158,7 @@ export async function deleteMember(name) {
 export async function setupMemberPin(name, pinHash) {
   try {
     const db = assertFirebaseAvailable();
-    const memberRef = doc(db, MEMBERS_COLLECTION, name);
+    const memberRef = doc(db, MEMBERS_COLLECTION, memberDocId(name));
     const snapshot = await getDoc(memberRef);
     if (!snapshot.exists()) {
       throw new Error("Member not found");
@@ -178,7 +186,7 @@ export async function setupMemberPin(name, pinHash) {
 export async function verifyMemberPin(name, pinHash) {
   try {
     const db = assertFirebaseAvailable();
-    const snapshot = await getDoc(doc(db, MEMBERS_COLLECTION, name));
+    const snapshot = await getDoc(doc(db, MEMBERS_COLLECTION, memberDocId(name)));
     if (!snapshot.exists()) {
       return false;
     }
@@ -197,7 +205,7 @@ export async function verifyMemberPin(name, pinHash) {
 export async function clearMemberPin(name) {
   try {
     const db = assertFirebaseAvailable();
-    const memberRef = doc(db, MEMBERS_COLLECTION, name);
+    const memberRef = doc(db, MEMBERS_COLLECTION, memberDocId(name));
     const snapshot = await getDoc(memberRef);
     if (!snapshot.exists()) {
       throw new Error("Member not found");
@@ -225,7 +233,7 @@ export async function clearMemberPin(name) {
 export async function updateMemberProfile(name, profile) {
   try {
     const db = assertFirebaseAvailable();
-    const memberRef = doc(db, MEMBERS_COLLECTION, name);
+    const memberRef = doc(db, MEMBERS_COLLECTION, memberDocId(name));
     const snapshot = await getDoc(memberRef);
     if (!snapshot.exists()) {
       throw new Error("Member not found");
