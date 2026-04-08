@@ -30,6 +30,17 @@ async function deleteLocalPhotos(eventId) {
   await appStorage.delete(buildLocalStorageKey(eventId));
 }
 
+function decoratePhotos(photos, eventMap, eventId) {
+  const eventInfo = eventMap.get(eventId) ?? {};
+  return photos.map((photo, index) => ({
+    ...photo,
+    eventId,
+    eventTitle: eventInfo.title ?? "벙개",
+    eventDate: eventInfo.date ?? "",
+    key: photo.path ?? `${eventId}-${photo.at}-${index}`,
+  }));
+}
+
 export async function uploadEventPhoto(eventId, { dataUrl, by, at }) {
   const storage = ensureFirebaseStorage();
 
@@ -89,4 +100,31 @@ export async function deleteEventPhotos(eventId) {
   const folderRef = ref(storage, `events/${eventId}`);
   const result = await listAll(folderRef);
   await Promise.all(result.items.map((itemRef) => deleteObject(itemRef)));
+}
+
+export async function listRecentPhotos(events, { offset = 0, limit = 20 } = {}) {
+  const eventMap = new Map(events.map((event) => [event.id, event]));
+  const storage = ensureFirebaseStorage();
+
+  let allPhotos = [];
+
+  if (!storage) {
+    const localPhotos = await Promise.all(
+      events.map(async (event) => decoratePhotos(await loadLocalPhotos(event.id), eventMap, event.id)),
+    );
+    allPhotos = localPhotos.flat();
+  } else {
+    const photoGroups = await Promise.all(
+      events.map(async (event) => decoratePhotos(await listEventPhotos(event.id), eventMap, event.id)),
+    );
+    allPhotos = photoGroups.flat();
+  }
+
+  const sortedPhotos = allPhotos.sort((left, right) => right.at.localeCompare(left.at));
+  const items = sortedPhotos.slice(offset, offset + limit);
+
+  return {
+    items,
+    hasMore: offset + limit < sortedPhotos.length,
+  };
 }

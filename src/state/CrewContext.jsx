@@ -98,6 +98,18 @@ export function CrewProvider({ children }) {
     setEvents(nextEvents);
   }, []);
 
+  const refreshEvents = useCallback(async () => {
+    try {
+      const storedEvents = await listEvents();
+      setEvents(storedEvents);
+      setDataError("");
+      return true;
+    } catch (error) {
+      setDataError(toErrorMessage(error));
+      return false;
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
 
@@ -288,9 +300,9 @@ export function CrewProvider({ children }) {
       };
     });
 
-    const targetEvent = nextEvents.find((event) => event.id === eventId);
-    if (targetEvent) {
-      await saveEvent(targetEvent);
+    const nextTargetEvent = nextEvents.find((event) => event.id === eventId);
+    if (nextTargetEvent) {
+      await saveEvent(nextTargetEvent);
       saveEventsState(nextEvents);
     }
   }, [events, myName, saveEventsState]);
@@ -331,6 +343,15 @@ export function CrewProvider({ children }) {
       return { ok: false, reason: "missing-name" };
     }
 
+    const targetEvent = events.find((event) => event.id === eventId);
+    if (!targetEvent) {
+      return { ok: false, reason: "missing-event" };
+    }
+
+    if (targetEvent.rsvp.length < 2) {
+      return { ok: false, reason: "insufficient-attendees" };
+    }
+
     const photos = await listEventPhotos(eventId);
     if (!photos.length) {
       return { ok: false, reason: "missing-photo" };
@@ -347,9 +368,9 @@ export function CrewProvider({ children }) {
       };
     });
 
-    const targetEvent = nextEvents.find((event) => event.id === eventId);
-    if (targetEvent) {
-      await saveEvent(targetEvent);
+    const nextTargetEvent = nextEvents.find((event) => event.id === eventId);
+    if (nextTargetEvent) {
+      await saveEvent(nextTargetEvent);
       saveEventsState(nextEvents);
     }
 
@@ -382,6 +403,7 @@ export function CrewProvider({ children }) {
     clearMemberPin,
     updateMemberProfile,
     createEvent,
+    refreshEvents,
     deleteEvent,
     toggleRsvp,
     uploadPhoto,
@@ -411,6 +433,7 @@ export function CrewProvider({ children }) {
     clearMemberPin,
     updateMemberProfile,
     createEvent,
+    refreshEvents,
     deleteEvent,
     toggleRsvp,
     uploadPhoto,

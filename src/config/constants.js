@@ -13,6 +13,7 @@ export const TITLES = [
 
 export const NAV_ITEMS = [
   { to: "/events", label: "벙개" },
+  { to: "/photos", label: "사진첩" },
   { to: "/attendance", label: "출석부" },
   { to: "/members", label: "크루원" },
 ];

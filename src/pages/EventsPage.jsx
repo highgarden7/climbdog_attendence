@@ -91,6 +91,7 @@ export default function EventsPage() {
     photoUploading,
     photoVersion,
     createEvent,
+    refreshEvents,
     deleteEvent,
     toggleRsvp,
     uploadPhoto,
@@ -102,6 +103,7 @@ export default function EventsPage() {
   const [form, setForm] = useState(initialForm);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [refreshing, setRefreshing] = useState(false);
 
   const filteredEvents = useMemo(() => {
     const inRangeEvents = events.filter((event) => {
@@ -166,6 +168,15 @@ export default function EventsPage() {
     window.alert("벙개 링크를 복사했어요.");
   }
 
+  async function handleRefreshEvents() {
+    setRefreshing(true);
+    try {
+      await refreshEvents();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function handleCreateEvent() {
     const created = await createEvent(form);
     if (!created) {
@@ -180,6 +191,11 @@ export default function EventsPage() {
     const result = await checkIn(eventId);
     if (!result.ok && result.reason === "missing-photo") {
       window.alert("사진 인증샷을 먼저 올려주세요. 사진 없이 출석 체크는 할 수 없습니다.");
+      return;
+    }
+
+    if (!result.ok && result.reason === "insufficient-attendees") {
+      window.alert("출석 체크는 참가자가 2명 이상일 때만 가능합니다.");
     }
   }
 
@@ -190,9 +206,14 @@ export default function EventsPage() {
 
   return (
     <>
-      <button type="button" className="primary-button" onClick={() => setShowCreateModal(true)}>
-        + 새 벙개 만들기
-      </button>
+      <div className="page-toolbar">
+        <button type="button" className="primary-button page-toolbar__primary" onClick={() => setShowCreateModal(true)}>
+          + 새 벙개 만들기
+        </button>
+        <button type="button" className="refresh-button" onClick={handleRefreshEvents} disabled={refreshing}>
+          {refreshing ? "불러오는 중..." : "새로고침"}
+        </button>
+      </div>
 
       {showCreateModal ? (
         <Modal title="🎯 벙개 만들기" onClose={() => setShowCreateModal(false)}>
@@ -267,7 +288,7 @@ export default function EventsPage() {
             onSelect={openEvent}
           />
         ) : (
-          <EmptyState icon="🗓️" title="다가오는 벙개가 없어요" description="90일 안에 잡힌 벙개가 아직 없습니다." />
+          <EmptyState icon="📆" title="다가오는 벙개가 없어요" description="90일 안에 잡힌 벙개가 아직 없습니다." />
         )
       ) : pastGroups.length ? (
         <EventDateGroups
@@ -278,7 +299,7 @@ export default function EventsPage() {
           past
         />
       ) : (
-        <EmptyState icon="📭" title="지난 벙개가 없어요" description="최근 90일 내 지난 벙개가 없습니다." />
+        <EmptyState icon="🗂" title="지난 벙개가 없어요" description="최근 90일의 지난 벙개가 없습니다." />
       )}
 
       {events.length === 0 ? <EmptyState icon="🪨" title="아직 벙개가 없어요" description="첫 벙개를 만들어보세요!" /> : null}

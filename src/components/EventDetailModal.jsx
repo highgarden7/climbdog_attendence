@@ -59,6 +59,7 @@ export default function EventDetailModal({
   const checkedIn = event.checkin.includes(myName);
   const isEventToday = isToday(event.date);
   const hasPhotos = photos.length > 0;
+  const canCheckIn = joined && event.rsvp.length >= 2 && hasPhotos && !checkedIn;
 
   return (
     <>
@@ -144,11 +145,19 @@ export default function EventDetailModal({
               {joined ? (
                 <button
                   type="button"
-                  className={`action-button ${checkedIn ? "is-done" : hasPhotos ? "is-primary" : "is-disabled"}`}
+                  className={`action-button ${checkedIn ? "is-done" : canCheckIn ? "is-primary" : "is-disabled"}`}
                   onClick={() => onCheckIn(event.id)}
-                  disabled={checkedIn}
+                  disabled={!canCheckIn}
                 >
-                  {checkedIn ? "출석 완료 ✓" : hasPhotos ? (isEventToday ? "출석 체크" : "출석 체크 등록") : "📷 사진 필요"}
+                  {checkedIn
+                    ? "출석 완료 ✓"
+                    : !hasPhotos
+                      ? "📷 사진 필요"
+                      : event.rsvp.length < 2
+                        ? "2인 이상 필요"
+                        : isEventToday
+                          ? "출석 체크"
+                          : "출석 체크 등록"}
                 </button>
               ) : null}
             </div>
