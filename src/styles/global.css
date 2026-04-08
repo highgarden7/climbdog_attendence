@@ -308,6 +308,7 @@ button { cursor: pointer; }
 .action-button.is-done { background: #4ecdc4; color: #fff; }
 .action-button.is-disabled { background: #e0e0e0; color: #999; }
 .modal-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+.modal-footer__actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .modal-footer__confirm { display: flex; align-items: center; gap: 10px; color: #ff4757; font-size: 0.82rem; }
 .small-button, .text-button { border: 0; background: none; }
 .small-button { padding: 6px 14px; border-radius: 10px; background: #f0f0f0; }

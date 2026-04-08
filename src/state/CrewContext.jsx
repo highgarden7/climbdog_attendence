@@ -265,6 +265,30 @@ export function CrewProvider({ children }) {
     return true;
   }, [events, myName, saveEventsState]);
 
+  const updateEvent = useCallback(async (eventId, form) => {
+    const targetEvent = events.find((event) => event.id === eventId);
+    if (!targetEvent) {
+      return false;
+    }
+
+    const canEdit = role === ADMIN_ROLE || targetEvent.createdBy === myName;
+    if (!canEdit || !form.date) {
+      return false;
+    }
+
+    const nextEvent = {
+      ...targetEvent,
+      title: form.title || "벙개",
+      location: form.location,
+      date: form.date,
+      note: form.note,
+    };
+
+    await saveEvent(nextEvent);
+    saveEventsState(events.map((event) => (event.id === eventId ? nextEvent : event)));
+    return true;
+  }, [events, myName, role, saveEventsState]);
+
   const deleteEvent = useCallback(async (eventId) => {
     const targetEvent = events.find((event) => event.id === eventId);
     if (!targetEvent) {
@@ -403,6 +427,7 @@ export function CrewProvider({ children }) {
     clearMemberPin,
     updateMemberProfile,
     createEvent,
+    updateEvent,
     refreshEvents,
     deleteEvent,
     toggleRsvp,
@@ -433,6 +458,7 @@ export function CrewProvider({ children }) {
     clearMemberPin,
     updateMemberProfile,
     createEvent,
+    updateEvent,
     refreshEvents,
     deleteEvent,
     toggleRsvp,

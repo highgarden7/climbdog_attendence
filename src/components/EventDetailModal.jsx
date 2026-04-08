@@ -7,7 +7,7 @@ export default function EventDetailModal({
   event,
   myName,
   members = [],
-  canDelete,
+  canManage,
   photoUploading,
   photoVersion,
   getPhotos,
@@ -15,6 +15,7 @@ export default function EventDetailModal({
   onToggleRsvp,
   onCheckIn,
   onUploadPhoto,
+  onEdit,
   onDelete,
   onCopyLink,
 }) {
@@ -164,7 +165,7 @@ export default function EventDetailModal({
           ) : null}
         </section>
 
-        {canDelete ? (
+        {canManage ? (
           <div className="modal-footer">
             {confirmDelete ? (
               <div className="modal-footer__confirm">
@@ -177,9 +178,14 @@ export default function EventDetailModal({
                 </button>
               </div>
             ) : (
-              <button type="button" className="text-button" onClick={() => setConfirmDelete(true)}>
-                벙개 삭제
-              </button>
+              <div className="modal-footer__actions">
+                <button type="button" className="small-button" onClick={onEdit}>
+                  수정
+                </button>
+                <button type="button" className="text-button" onClick={() => setConfirmDelete(true)}>
+                  벙개 삭제
+                </button>
+              </div>
             )}
           </div>
         ) : null}

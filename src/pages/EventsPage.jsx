@@ -82,6 +82,35 @@ function EventDateGroups({ groups, myName, onToggleRsvp, onSelect, past = false 
   );
 }
 
+function EventFormModal({ mode, form, onChange, onClose, onSubmit }) {
+  const isEdit = mode === "edit";
+
+  return (
+    <Modal title={isEdit ? "벙개 수정" : "🎯 벙개 만들기"} onClose={onClose}>
+      <Field label="제목">
+        <input className="input" value={form.title} onChange={(event) => onChange({ ...form, title: event.target.value })} />
+      </Field>
+      <Field label="날짜">
+        <input className="input" type="date" value={form.date} onChange={(event) => onChange({ ...form, date: event.target.value })} />
+      </Field>
+      <Field label="장소">
+        <input className="input" value={form.location} onChange={(event) => onChange({ ...form, location: event.target.value })} />
+      </Field>
+      <Field label="메모 (선택)">
+        <input className="input" value={form.note} onChange={(event) => onChange({ ...form, note: event.target.value })} />
+      </Field>
+      <div className="form-actions">
+        <button type="button" className="secondary-button" onClick={onClose}>
+          취소
+        </button>
+        <button type="button" className="accent-button" onClick={onSubmit} disabled={!form.date}>
+          {isEdit ? "수정하기" : "만들기"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function EventsPage() {
   const {
     isAdmin,
@@ -91,6 +120,7 @@ export default function EventsPage() {
     photoUploading,
     photoVersion,
     createEvent,
+    updateEvent,
     refreshEvents,
     deleteEvent,
     toggleRsvp,
@@ -99,8 +129,10 @@ export default function EventsPage() {
     getPhotos,
   } = useCrew();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
+  const [showFormModal, setShowFormModal] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [refreshing, setRefreshing] = useState(false);
@@ -160,6 +192,35 @@ export default function EventsPage() {
     });
   }
 
+  function openCreateModal() {
+    setModalMode("create");
+    setEditingEventId(null);
+    setForm(initialForm);
+    setShowFormModal(true);
+  }
+
+  function openEditModal() {
+    if (!selectedEvent) {
+      return;
+    }
+
+    setModalMode("edit");
+    setEditingEventId(selectedEvent.id);
+    setForm({
+      title: selectedEvent.title ?? "",
+      location: selectedEvent.location ?? "",
+      date: selectedEvent.date ?? "",
+      note: selectedEvent.note ?? "",
+    });
+    setShowFormModal(true);
+  }
+
+  function closeFormModal() {
+    setShowFormModal(false);
+    setEditingEventId(null);
+    setForm(initialForm);
+  }
+
   async function handleCopyEventLink(eventId) {
     const shareUrl = new URL(window.location.href);
     shareUrl.pathname = "/events";
@@ -177,14 +238,20 @@ export default function EventsPage() {
     }
   }
 
-  async function handleCreateEvent() {
-    const created = await createEvent(form);
-    if (!created) {
-      return;
+  async function handleSubmitEventForm() {
+    if (modalMode === "edit" && editingEventId) {
+      const updated = await updateEvent(editingEventId, form);
+      if (!updated) {
+        return;
+      }
+    } else {
+      const created = await createEvent(form);
+      if (!created) {
+        return;
+      }
     }
 
-    setForm(initialForm);
-    setShowCreateModal(false);
+    closeFormModal();
   }
 
   async function handleCheckIn(eventId) {
@@ -207,7 +274,7 @@ export default function EventsPage() {
   return (
     <>
       <div className="page-toolbar">
-        <button type="button" className="primary-button page-toolbar__primary" onClick={() => setShowCreateModal(true)}>
+        <button type="button" className="primary-button page-toolbar__primary" onClick={openCreateModal}>
           + 새 벙개 만들기
         </button>
         <button type="button" className="refresh-button" onClick={handleRefreshEvents} disabled={refreshing}>
@@ -215,29 +282,14 @@ export default function EventsPage() {
         </button>
       </div>
 
-      {showCreateModal ? (
-        <Modal title="🎯 벙개 만들기" onClose={() => setShowCreateModal(false)}>
-          <Field label="제목">
-            <input className="input" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          </Field>
-          <Field label="날짜">
-            <input className="input" type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
-          </Field>
-          <Field label="장소">
-            <input className="input" value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} />
-          </Field>
-          <Field label="메모 (선택)">
-            <input className="input" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
-          </Field>
-          <div className="form-actions">
-            <button type="button" className="secondary-button" onClick={() => setShowCreateModal(false)}>
-              취소
-            </button>
-            <button type="button" className="accent-button" onClick={handleCreateEvent} disabled={!form.date}>
-              만들기
-            </button>
-          </div>
-        </Modal>
+      {showFormModal ? (
+        <EventFormModal
+          mode={modalMode}
+          form={form}
+          onChange={setForm}
+          onClose={closeFormModal}
+          onSubmit={handleSubmitEventForm}
+        />
       ) : null}
 
       {selectedEvent ? (
@@ -245,7 +297,7 @@ export default function EventsPage() {
           event={selectedEvent}
           myName={myName}
           members={members}
-          canDelete={isAdmin || selectedEvent.createdBy === myName}
+          canManage={isAdmin || selectedEvent.createdBy === myName}
           photoUploading={photoUploading}
           photoVersion={photoVersion}
           getPhotos={getPhotos}
@@ -253,6 +305,7 @@ export default function EventsPage() {
           onToggleRsvp={toggleRsvp}
           onCheckIn={handleCheckIn}
           onUploadPhoto={uploadPhoto}
+          onEdit={openEditModal}
           onDelete={handleDeleteEvent}
           onCopyLink={handleCopyEventLink}
         />
