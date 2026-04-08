@@ -1,5 +1,14 @@
 {
+  "functions": {
+    "api/events.js": {
+      "includeFiles": "dist/**"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/events",
+      "destination": "/api/events"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
