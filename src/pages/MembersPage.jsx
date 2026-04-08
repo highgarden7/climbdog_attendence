@@ -3,6 +3,7 @@ import EmptyState from "../components/EmptyState";
 import MemberProfileModal from "../components/MemberProfileModal";
 import Modal from "../components/Modal";
 import { useCrew } from "../state/CrewContext";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 
 function getDaysSince(iso) {
   if (!iso) {
@@ -161,7 +162,7 @@ export default function MembersPage() {
               className="member-chip__name"
               onClick={() => setSelectedMemberName(member.name)}
             >
-              {member.name}
+              {formatMemberDisplayName(member)}
             </button>
             <button type="button" className="member-chip__remove" onClick={() => handleRemoveMember(member.name)}>
               ×

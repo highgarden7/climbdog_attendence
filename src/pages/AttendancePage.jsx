@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import EmptyState from "../components/EmptyState";
 import StatBox from "../components/StatBox";
 import { useCrew } from "../state/CrewContext";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 import { getTitle } from "../utils/titles";
 
 function formatSlashDate(iso) {
@@ -58,12 +59,14 @@ export default function AttendancePage() {
         const attended = attendedEvents.length;
         const rate = events.length ? Math.round((attended / events.length) * 100) : 0;
         const lastAttendedDate = attendedEvents[0]?.date ?? null;
+        const importedAttendance = member.profile?.attendance || null;
         const joinedDate = member.profile?.joinDate || null;
-        const effectiveLastDate = lastAttendedDate ?? joinedDate ?? null;
+        const effectiveLastDate = lastAttendedDate ?? importedAttendance ?? joinedDate ?? null;
         const lifeDays = getDaysSince(effectiveLastDate);
 
         return {
           name: member.name,
+          displayName: formatMemberDisplayName(member),
           attended,
           rate,
           title: getTitle(rate),
@@ -117,7 +120,7 @@ export default function AttendancePage() {
                 </div>
                 <div className="stats-row__body">
                   <div className="stats-row__name">
-                    <span>{stat.name}</span>
+                    <span>{stat.displayName}</span>
                     <span className="stats-row__title" style={{ color: stat.title.color, backgroundColor: `${stat.title.color}22` }}>
                       {stat.title.icon} {stat.title.label}
                     </span>

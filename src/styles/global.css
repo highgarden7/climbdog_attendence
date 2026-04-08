@@ -172,6 +172,20 @@ button { cursor: pointer; }
 .profile-summary__label { display: block; color: #8d95a3; font-size: 0.76rem; font-weight: 700; }
 .profile-summary__value { display: block; margin-top: 4px; color: #1a1a2e; font-size: 0.94rem; }
 .profile-form { display: grid; gap: 2px; }
+.radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #dde2ea;
+  border-radius: 12px;
+  background: #fafafa;
+  color: #444;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.radio-option input { margin: 0; accent-color: #ff6b35; }
 .help-text { margin: 0 0 12px; color: #888; font-size: 0.84rem; }
 .form-error { margin-top: -4px; color: #ff4757; font-size: 0.8rem; }
 .detail-row { margin-bottom: 8px; color: #444; font-size: 0.92rem; }

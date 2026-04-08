@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import Modal from "./Modal";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 
 export default function AppHeader({
   membersCount,
@@ -17,8 +18,8 @@ export default function AppHeader({
       return "어드민";
     }
 
-    return myName;
-  }, [isAdmin, myName]);
+    return formatMemberDisplayName(myName, members);
+  }, [isAdmin, members, myName]);
 
   return (
     <>
@@ -40,7 +41,7 @@ export default function AppHeader({
                   <option value="">내 이름 선택</option>
                   {members.map((member) => (
                     <option key={member.name} value={member.name}>
-                      {member.name}
+                      {formatMemberDisplayName(member)}
                     </option>
                   ))}
                 </select>

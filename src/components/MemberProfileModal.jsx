@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 
 const PROFILE_FIELDS = [
   { key: "homeRegion", label: "출몰지역" },
-  { key: "status", label: "상태" },
   { key: "level", label: "난이도" },
   { key: "instagram", label: "인스타아이디" },
   { key: "birthday", label: "생일", type: "date" },
@@ -14,6 +14,8 @@ const PROFILE_FIELDS = [
   { key: "ment", label: "Ment", multiline: true },
   { key: "phone", label: "전화번호", type: "tel" },
 ];
+
+const STATUS_OPTIONS = ["생존", "부상", "바쁨"];
 
 function buildInitialForm(member) {
   const profile = member?.profile ?? {};
@@ -71,7 +73,7 @@ export default function MemberProfileModal({
   }
 
   return (
-    <Modal title={member?.name ?? "크루원 정보"} onClose={onClose}>
+    <Modal title={formatMemberDisplayName(member) || "크루원 정보"} onClose={onClose}>
       <div className="profile-summary">
         {summaryItems.map((item) => (
           <div key={item.label} className="profile-summary__item">
@@ -82,6 +84,24 @@ export default function MemberProfileModal({
       </div>
 
       <div className="profile-form">
+        <label className="field">
+          <span className="field__label">상태</span>
+          <div className="radio-group">
+            {STATUS_OPTIONS.map((option) => (
+              <label key={option} className="radio-option">
+                <input
+                  type="radio"
+                  name="status"
+                  value={option}
+                  checked={form.status === option}
+                  onChange={(event) => handleChange("status", event.target.value)}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        </label>
+
         {PROFILE_FIELDS.map((field) => (
           <label key={field.key} className="field">
             <span className="field__label">{field.label}</span>

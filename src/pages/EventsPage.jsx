@@ -86,6 +86,7 @@ export default function EventsPage() {
   const {
     isAdmin,
     events,
+    members,
     myName,
     photoUploading,
     photoVersion,
@@ -222,6 +223,7 @@ export default function EventsPage() {
         <EventDetailModal
           event={selectedEvent}
           myName={myName}
+          members={members}
           canDelete={isAdmin || selectedEvent.createdBy === myName}
           photoUploading={photoUploading}
           photoVersion={photoVersion}

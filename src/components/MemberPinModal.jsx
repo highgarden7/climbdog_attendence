@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 import Modal from "./Modal";
 
 function isValidPin(pin) {
@@ -10,9 +11,10 @@ export default function MemberPinModal({ memberName, mode, onClose, onSetupPin, 
   const [confirmPin, setConfirmPin] = useState("");
   const [error, setError] = useState("");
 
+  const displayName = useMemo(() => formatMemberDisplayName(memberName), [memberName]);
   const title = useMemo(() => (
-    mode === "setup" ? `${memberName} PIN 설정` : `${memberName} PIN 입력`
-  ), [memberName, mode]);
+    mode === "setup" ? `${displayName} PIN 설정` : `${displayName} PIN 입력`
+  ), [displayName, mode]);
 
   async function handleSubmit() {
     setError("");
@@ -46,7 +48,7 @@ export default function MemberPinModal({ memberName, mode, onClose, onSetupPin, 
   return (
     <Modal title={title} onClose={onClose}>
       <p className="help-text">
-        {mode === "setup" ? "처음 사용할 4자리 PIN을 설정해주세요." : "등록한 4자리 PIN을 입력해주세요."}
+        {mode === "setup" ? "처음 사용 전 4자리 PIN을 설정해 주세요." : "등록한 4자리 PIN을 입력해 주세요."}
       </p>
 
       <div className="field">

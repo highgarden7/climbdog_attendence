@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { formatDate, isToday } from "../utils/date";
+import { formatMemberDisplayName } from "../utils/memberDisplay";
 import Modal from "./Modal";
 
 export default function EventDetailModal({
   event,
   myName,
+  members = [],
   canDelete,
   photoUploading,
   photoVersion,
@@ -64,7 +66,7 @@ export default function EventDetailModal({
         <div className="detail-row">📅 {formatDate(event.date)}</div>
         {event.location ? <div className="detail-row">📍 {event.location}</div> : null}
         {event.note ? <div className="detail-row">📝 {event.note}</div> : null}
-        <div className="detail-row">👤 만든 사람 {event.createdBy}</div>
+        <div className="detail-row">👤 만든 사람 {formatMemberDisplayName(event.createdBy, members) || event.createdBy}</div>
 
         <div className="detail-share">
           <button type="button" className="small-button" onClick={() => onCopyLink(event.id)}>
@@ -90,7 +92,7 @@ export default function EventDetailModal({
               {photos.map((photo, index) => (
                 <button key={`${photo.at}-${index}`} type="button" className="photo-thumb" onClick={() => setSelectedPhoto(photo)}>
                   <img src={photo.data} alt="" className="photo-thumb__image" />
-                  <span className="photo-thumb__by">{photo.by}</span>
+                  <span className="photo-thumb__by">{formatMemberDisplayName(photo.by, members) || photo.by}</span>
                 </button>
               ))}
             </div>
@@ -115,7 +117,7 @@ export default function EventDetailModal({
                 }}
               />
               <button type="button" className="upload-button" onClick={() => fileInputRef.current?.click()} disabled={photoUploading}>
-                {photoUploading ? "업로드 중..." : "📷 사진 올리기"}
+                {photoUploading ? "업로드 중..." : "📤 사진 올리기"}
               </button>
             </>
           ) : null}
@@ -127,7 +129,7 @@ export default function EventDetailModal({
             {event.rsvp.length === 0 ? <span className="detail-section__message">아직 없어요</span> : null}
             {event.rsvp.map((name) => (
               <span key={name} className={`name-tag ${event.checkin.includes(name) ? "is-checked" : ""}`}>
-                {name}
+                {formatMemberDisplayName(name, members) || name}
                 {event.checkin.includes(name) ? " ✓" : ""}
               </span>
             ))}
@@ -178,7 +180,7 @@ export default function EventDetailModal({
         <div className="photo-viewer" onClick={() => setSelectedPhoto(null)} role="presentation">
           <img src={selectedPhoto.data} alt="" className="photo-viewer__image" />
           <div className="photo-viewer__meta">
-            {selectedPhoto.by} · {new Date(selectedPhoto.at).toLocaleDateString("ko")}
+            {formatMemberDisplayName(selectedPhoto.by, members) || selectedPhoto.by} · {new Date(selectedPhoto.at).toLocaleDateString("ko")}
           </div>
         </div>
       ) : null}
