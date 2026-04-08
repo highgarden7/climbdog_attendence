@@ -15,6 +15,14 @@ function getDaysSince(iso) {
   return Math.max(0, Math.floor((today - target) / 86400000));
 }
 
+function toErrorMessage(error) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "크루원 작업에 실패했습니다.";
+}
+
 export default function MembersPage() {
   const {
     isAdmin,
@@ -29,6 +37,7 @@ export default function MembersPage() {
   const [showModal, setShowModal] = useState(false);
   const [newMembers, setNewMembers] = useState("");
   const [selectedMemberName, setSelectedMemberName] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const memberStats = useMemo(() => (
     members.reduce((accumulator, member) => {
@@ -48,13 +57,20 @@ export default function MembersPage() {
   const selectedMember = members.find((member) => member.name === selectedMemberName) ?? null;
 
   async function handleAddMembers() {
-    const added = await addMembers(newMembers);
-    if (!added) {
-      return;
-    }
+    setActionError("");
 
-    setNewMembers("");
-    setShowModal(false);
+    try {
+      const added = await addMembers(newMembers);
+      if (!added) {
+        setActionError("추가할 이름을 입력해 주세요.");
+        return;
+      }
+
+      setNewMembers("");
+      setShowModal(false);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    }
   }
 
   async function handleSaveProfile(profile) {
@@ -62,7 +78,14 @@ export default function MembersPage() {
       return;
     }
 
-    await updateMemberProfile(selectedMember.name, profile);
+    setActionError("");
+
+    try {
+      await updateMemberProfile(selectedMember.name, profile);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+      throw error;
+    }
   }
 
   async function handleClearMemberPin() {
@@ -70,7 +93,24 @@ export default function MembersPage() {
       return;
     }
 
-    await clearMemberPin(selectedMember.name);
+    setActionError("");
+
+    try {
+      await clearMemberPin(selectedMember.name);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleRemoveMember(memberName) {
+    setActionError("");
+
+    try {
+      await removeMember(memberName);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    }
   }
 
   if (!isAdmin) {
@@ -88,6 +128,8 @@ export default function MembersPage() {
       <button type="button" className="primary-button" onClick={() => setShowModal(true)}>
         + 크루원 추가
       </button>
+
+      {actionError ? <p className="form-error">{actionError}</p> : null}
 
       {showModal ? (
         <Modal title="크루원 추가" onClose={() => setShowModal(false)}>
@@ -121,7 +163,7 @@ export default function MembersPage() {
             >
               {member.name}
             </button>
-            <button type="button" className="member-chip__remove" onClick={() => removeMember(member.name)}>
+            <button type="button" className="member-chip__remove" onClick={() => handleRemoveMember(member.name)}>
               ×
             </button>
           </div>
